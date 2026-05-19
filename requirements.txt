@@ -1,0 +1,8 @@
+duckdb==0.10.1
+pandas==2.2.1
+requests==2.31.0
+fastapi==0.110.0
+uvicorn==0.29.0
+streamlit==1.33.0
+python-dotenv==1.0.1
+uuid==1.30

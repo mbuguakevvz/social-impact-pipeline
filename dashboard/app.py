@@ -9,21 +9,19 @@ import duckdb
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import json
+import os
 
 DB_PATH = "warehouse/social_impact.duckdb"
 
-# ─────────────────────────────────────────
 # PAGE CONFIG
-# ─────────────────────────────────────────
 st.set_page_config(
     page_title="Kenya Social Impact Dashboard",
     page_icon="🇰🇪",
     layout="wide"
 )
 
-# ─────────────────────────────────────────
 # DB CONNECTION
-# ─────────────────────────────────────────
 @st.cache_resource
 def get_con():
     return duckdb.connect(DB_PATH, read_only=True)
@@ -33,9 +31,7 @@ def run_query(sql):
     con = get_con()
     return con.execute(sql).fetchdf()
 
-# ─────────────────────────────────────────
 # HEADER
-# ─────────────────────────────────────────
 st.title("🇰🇪 Kenya Social Impact Dashboard")
 st.markdown("""
 **Interoperability Pipeline** — Unified view across **UNHCR**, **WHO AFRO**, and **World Bank** data.
@@ -43,26 +39,22 @@ Built by [mbuguakevvz](https://github.com/mbuguakevvz)
 """)
 st.divider()
 
-# ─────────────────────────────────────────
 # TOP KPI METRICS
-# ─────────────────────────────────────────
 col1, col2, col3, col4 = st.columns(4)
 
-total = run_query("SELECT COUNT(*) AS n FROM unified_social_indicators")
-sources = run_query("SELECT COUNT(DISTINCT source) AS n FROM unified_social_indicators")
+total      = run_query("SELECT COUNT(*) AS n FROM unified_social_indicators")
+sources    = run_query("SELECT COUNT(DISTINCT source) AS n FROM unified_social_indicators")
 indicators = run_query("SELECT COUNT(DISTINCT indicator_name) AS n FROM unified_social_indicators")
-years = run_query("SELECT MIN(year) AS y1, MAX(year) AS y2 FROM unified_social_indicators")
+years      = run_query("SELECT MIN(year) AS y1, MAX(year) AS y2 FROM unified_social_indicators")
 
-col1.metric("Total Records",    f"{total['n'][0]:,}")
-col2.metric("Data Sources",     f"{sources['n'][0]}")
-col3.metric("Unique Indicators",f"{indicators['n'][0]}")
-col4.metric("Year Range",       f"{years['y1'][0]} – {years['y2'][0]}")
+col1.metric("Total Records",     f"{total['n'][0]:,}")
+col2.metric("Data Sources",      f"{sources['n'][0]}")
+col3.metric("Unique Indicators", f"{indicators['n'][0]}")
+col4.metric("Year Range",        f"{years['y1'][0]} – {years['y2'][0]}")
 
 st.divider()
 
-# ─────────────────────────────────────────
 # SIDEBAR FILTERS
-# ─────────────────────────────────────────
 st.sidebar.title("🔎 Filters")
 
 all_sources = run_query("SELECT DISTINCT source FROM unified_social_indicators ORDER BY source")
@@ -103,9 +95,7 @@ st.sidebar.markdown("- 🌍 UNHCR Refugee Data")
 st.sidebar.markdown("- 🏥 WHO AFRO Health Data")
 st.sidebar.markdown("- 🏦 World Bank Development Data")
 
-# ─────────────────────────────────────────
 # TREND CHART
-# ─────────────────────────────────────────
 st.subheader(f"📈 Trend: {selected_indicator}")
 
 source_filter = f"AND source = '{selected_source}'" if selected_source != "All" else ""
@@ -142,9 +132,7 @@ else:
 
 st.divider()
 
-# ─────────────────────────────────────────
-# RECORDS BY SOURCE BAR CHART
-# ─────────────────────────────────────────
+# RECORDS BY SOURCE
 col_a, col_b = st.columns(2)
 
 with col_a:
@@ -190,9 +178,7 @@ with col_b:
 
 st.divider()
 
-# ─────────────────────────────────────────
 # RAW DATA TABLE
-# ─────────────────────────────────────────
 st.subheader("🗃️ Raw Unified Data")
 
 if selected_source != "All":
@@ -209,5 +195,64 @@ table_data = run_query(f"""
 """)
 
 st.dataframe(table_data, use_container_width=True)
-
 st.caption("Data sources: UNHCR · WHO AFRO · World Bank | Pipeline by mbuguakevvz")
+
+st.divider()
+
+# KENYA COUNTY MAP
+st.divider()
+st.subheader("🗺️ Kenya County-Level Social Indicators Map")
+
+county_json = "data/raw/kenya_counties.json"
+if os.path.exists(county_json):
+    with open(county_json) as f:
+        counties = json.load(f)
+
+    county_df = pd.DataFrame(counties)
+
+    map_indicator = st.selectbox(
+        "Map Indicator",
+        ["simulated_poverty_rate", "simulated_health_score"],
+        format_func=lambda x: "Poverty Rate (%)" if x == "simulated_poverty_rate"
+                               else "Health Score"
+    )
+
+    label = "Poverty Rate (%)" if map_indicator == "simulated_poverty_rate" else "Health Score"
+
+    fig_map = px.scatter_mapbox(
+        county_df,
+        lat="lat",
+        lon="lon",
+        size=map_indicator,
+        color=map_indicator,
+        hover_name="county",
+        hover_data={
+            "region":                   True,
+            "simulated_poverty_rate":   True,
+            "simulated_health_score":   True,
+            "lat":                      False,
+            "lon":                      False
+        },
+        color_continuous_scale="Reds",
+        size_max=40,
+        opacity=0.8,
+        zoom=5,
+        center={"lat": 0.0, "lon": 38.0},
+        mapbox_style="carto-darkmatter",
+        title=f"Kenya Counties — {label}",
+        labels={map_indicator: label}
+    )
+
+    fig_map.update_layout(
+        paper_bgcolor="#0e1117",
+        font_color="white",
+        height=600,
+        margin=dict(l=0, r=0, t=40, b=0),
+        coloraxis_colorbar=dict(title=label)
+    )
+
+    st.plotly_chart(fig_map, use_container_width=True)
+    st.caption(f"Showing {len(county_df)} Kenya counties · Bubble size and color represent indicator intensity")
+
+else:
+    st.warning("County data not found. Run data/raw/generate_kenya_geojson.py first.")

@@ -1,0 +1,7 @@
+dbt_social_impact:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "../warehouse/social_impact.duckdb"
+      threads: 4

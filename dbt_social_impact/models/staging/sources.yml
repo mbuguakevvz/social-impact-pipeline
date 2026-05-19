@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: warehouse
+    schema: main
+    tables:
+      - name: unified_social_indicators
+        description: "Unified social impact indicators from UNHCR, WHO AFRO, and World Bank"
+        columns:
+          - name: record_id
+            description: "Unique UUID for each record"
+          - name: source
+            description: "Data source: UNHCR, WHO_AFRO, or WorldBank"
+          - name: indicator_name
+            description: "Name of the social indicator"
+          - name: indicator_value
+            description: "Numeric value of the indicator"
+          - name: year
+            description: "Year of observation"

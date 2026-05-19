@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: mart_displacement_trends
+    description: "Year-by-year UNHCR displacement trends in Kenya"
+    columns:
+      - name: year
+        description: "Year of observation"
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_health_outcomes
+    description: "WHO AFRO health outcome indicators pivoted by year"
+    columns:
+      - name: year
+        description: "Year of observation"
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_development_indicators
+    description: "World Bank development indicators pivoted by year"
+    columns:
+      - name: year
+        description: "Year of observation"
+        tests:
+          - not_null
+          - unique
+
+  - name: mart_cross_source_summary
+    description: "Cross-source interoperability model joining all three sources by year"
+    columns:
+      - name: year
+        description: "Year of observation"
+        tests:
+          - not_null
+          - unique
